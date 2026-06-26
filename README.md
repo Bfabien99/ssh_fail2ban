@@ -18,7 +18,7 @@ partout : **SSH par clé uniquement** + **fail2ban** qui bannit les IP abusives.
 
 2. **fail2ban — jail `sshd`** (`/etc/fail2ban/jail.local`)
    ```
-   maxretry=4  findtime=10m  bantime=1h  mode=aggressive
+   maxretry=4  findtime=10m  bantime=5h  mode=aggressive
    ignoreip = 127.0.0.1/8 ::1 100.64.0.0/10   # loopback + Tailscale jamais bannis
    ```
 

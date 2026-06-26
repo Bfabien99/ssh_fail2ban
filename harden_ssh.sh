@@ -203,7 +203,7 @@ setup_fail2ban() {
 ignoreip = 127.0.0.1/8 ::1 100.64.0.0/10
 ${banaction:+# Backend de ban auto-détecté (nftables > iptables > route).
 banaction = $banaction
-}bantime  = 1h
+}bantime  = 5h
 findtime = 10m
 maxretry = 4
 backend  = systemd
