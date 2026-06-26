@@ -155,6 +155,22 @@ setup_fail2ban() {
 		ok "fail2ban déjà installé."
 	fi
 
+	# --- Binding Python systemd (backend=systemd lit le journal) ------------
+	# Indispensable sur les box journald-only (pas de /var/log/auth.log) :
+	# sans python3-systemd, le serveur fail2ban crashe au démarrage. C'est un
+	# paquet "Recommended" souvent non tiré par l'install de base.
+	if ! python3 -c 'import systemd.journal' >/dev/null 2>&1; then
+		say "Installation du binding python3-systemd (backend journal)…"
+		case "$PKG" in
+			apt) run "DEBIAN_FRONTEND=noninteractive apt-get install -y python3-systemd" ;;
+			dnf) run "dnf install -y python3-systemd" ;;
+			yum) run "yum install -y python3-systemd" ;;
+			*)   warn "Gestionnaire de paquets inconnu — installe python3-systemd à la main si backend=systemd." ;;
+		esac
+	else
+		ok "Binding python3-systemd présent."
+	fi
+
 	# --- Port(s) SSH réel(s) : repris de la conf sshd effective -------------
 	local ssh_ports
 	ssh_ports=$(sshd -T 2>/dev/null | awk '/^port /{print $2}' | paste -sd, -)
@@ -174,6 +190,10 @@ backend  = systemd
 [sshd]
 enabled = true
 port    = ${ssh_ports}
+# Forcer le backend systemd jusque dans la jail : le [sshd] de jail.conf surcharge
+# le backend du [DEFAULT] et retombe sinon sur /var/log/auth.log (absent en
+# journald-only) -> 'Have not found any log file for sshd jail' au démarrage.
+backend = systemd
 # 'aggressive' : attrape aussi scans/échecs publickey, pas seulement password.
 mode    = aggressive"
 
