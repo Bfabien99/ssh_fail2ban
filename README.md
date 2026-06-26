@@ -22,6 +22,23 @@ partout : **SSH par clé uniquement** + **fail2ban** qui bannit les IP abusives.
    ignoreip = 127.0.0.1/8 ::1 100.64.0.0/10   # loopback + Tailscale jamais bannis
    ```
 
+## Backend de ban auto-détecté (rien à installer)
+
+fail2ban a besoin d'un mécanisme pour *appliquer* les bans. Le script le détecte
+et pose un `banaction` **explicite** (comportement déterministe, peu importe la
+distro), dans cet ordre :
+
+| Présent sur la machine | `banaction` choisi   | Remarque                                   |
+|------------------------|----------------------|--------------------------------------------|
+| `nft` (nftables)       | `nftables-multiport` | Préféré (pare-feu moderne)                 |
+| sinon `iptables`       | `iptables-multiport` | Repli classique                            |
+| sinon `ip` (iproute2)  | `route`              | **Sans pare-feu** : blackhole l'IP (route) |
+| aucun des trois        | *(aucun)*            | Avertissement : détection seule, pas de ban |
+
+Le script **n'installe ni ne modifie aucun pare-feu** : il s'adapte à l'existant.
+Le mode `route` bannit au niveau routage (ignore le port) — suffisant pour stopper
+un brute-force SSH, mais plus grossier qu'un filtre par port.
+
 ## Sécurité anti-lockout
 
 Le script **refuse** de désactiver le mot de passe s'il ne trouve **aucune clé

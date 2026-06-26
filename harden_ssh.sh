@@ -176,13 +176,34 @@ setup_fail2ban() {
 	ssh_ports=$(sshd -T 2>/dev/null | awk '/^port /{print $2}' | paste -sd, -)
 	[[ -n "$ssh_ports" ]] || ssh_ports="22"
 
+	# --- Backend de ban : on s'ADAPTE à ce qui est présent (rien à installer) -
+	# fail2ban a besoin d'un mécanisme pour APPLIQUER les bans. On choisit dans
+	# l'ordre nftables -> iptables -> route (blackhole via iproute2, sans aucun
+	# pare-feu). On pose un banaction EXPLICITE → comportement déterministe quelle
+	# que soit la distro (au lieu de dépendre du défaut packagé). Cohérent avec la
+	# promesse du script : on n'installe ni ne modifie aucun pare-feu.
+	local banaction=""
+	if   command -v nft      >/dev/null 2>&1; then banaction="nftables-multiport"
+	elif command -v iptables >/dev/null 2>&1; then banaction="iptables-multiport"
+	elif command -v ip       >/dev/null 2>&1; then banaction="route"   # sans pare-feu
+	fi
+	if [[ -n "$banaction" ]]; then
+		ok "Backend de ban : ${banaction}"
+		[[ "$banaction" == "route" ]] && warn "Mode 'route' : blackhole de l'IP au niveau routage (ignore le port) — OK pour SSH, mais plus grossier qu'un filtre."
+	else
+		warn "Ni nft, ni iptables, ni iproute2 → fail2ban DÉTECTERA mais NE BANNIRA PAS."
+		warn "Installe nftables (ou iptables) pour rendre les bans effectifs."
+	fi
+
 	# --- jail.local (les overrides vont ici, jamais dans jail.conf) ---------
 	local jail="/etc/fail2ban/jail.local"
 	local content="# Config locale fail2ban — générée par harden_ssh.sh. Ne pas éditer jail.conf.
 [DEFAULT]
 # Ne jamais bannir loopback ni Tailscale (100.64.0.0/10) → accès de secours.
 ignoreip = 127.0.0.1/8 ::1 100.64.0.0/10
-bantime  = 1h
+${banaction:+# Backend de ban auto-détecté (nftables > iptables > route).
+banaction = $banaction
+}bantime  = 1h
 findtime = 10m
 maxretry = 4
 backend  = systemd
