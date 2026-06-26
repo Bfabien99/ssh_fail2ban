@@ -108,6 +108,20 @@ fail2ban-client unban --all                 # vide TOUS les bans (toutes jails)
 fail2ban-client set sshd banip 1.2.3.4      # bannit tout de suite via la jail
 ```
 
+### Durée de ban (bantime)
+```bash
+fail2ban-client get sshd bantime               # durée courante (en secondes, ex. 18000 = 5h)
+fail2ban-client set sshd bantime 5h            # change à chaud (non persistant : perdu au restart)
+# Pour rendre permanent : éditer bantime dans /etc/fail2ban/jail.local puis reload.
+```
+
+### Temps restant avant déban d'une IP
+```bash
+fail2ban-client get sshd banip --with-time     # IP bannies + heure de déban
+# Sortie : <ip>  <date du ban> + <bantime s> = <date de déban>
+# (les vieux bans gardent leur ancien bantime, ex. +3600 ; les neufs : +18000 = 5h)
+```
+
 ### Ne jamais bannir une IP (whitelist permanente)
 À mettre dans `ignoreip` de `/etc/fail2ban/jail.local` (séparées par des espaces),
 puis recharger. Loopback et Tailscale (`100.64.0.0/10`) y sont déjà.
